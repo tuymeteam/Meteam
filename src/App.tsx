@@ -6,6 +6,7 @@ import TaskBoard from './components/TaskBoard';
 import TaskList from './components/TaskList';
 import TaskForm from './components/TaskForm';
 import TaskDetailModal from './components/TaskDetailModal';
+import ShareModal from './components/ShareModal';
 import { 
   Building2, 
   LayoutDashboard, 
@@ -23,7 +24,15 @@ import {
   Shield,
   Users,
   CheckCircle,
-  Lock
+  Lock,
+  ArrowRight,
+  LogOut,
+  Settings,
+  AlertCircle,
+  Wrench,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 
 const STORAGE_KEY = 'quanly_congviec_tasks';
@@ -51,9 +60,57 @@ export default function App() {
   const [tempEmailInput, setTempEmailInput] = useState(INITIAL_USER_EMAIL);
 
   // Role switching states
-  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('admin');
-  const [currentStaffName, setCurrentStaffName] = useState<string>('NV1: Dũng');
+  const [activeApp, setActiveApp] = useState<'portal' | 'admin' | 'staff'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const appParam = params.get('app');
+      if (appParam === 'admin' || appParam === 'staff' || appParam === 'portal') {
+        localStorage.setItem('active_app', appParam);
+        return appParam;
+      }
+    }
+    const saved = localStorage.getItem('active_app');
+    if (saved === 'admin' || saved === 'staff') {
+      return saved;
+    }
+    return 'portal';
+  });
+  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const appParam = params.get('app');
+      if (appParam === 'staff') return 'staff';
+      if (appParam === 'admin') return 'admin';
+    }
+    const saved = localStorage.getItem('active_app');
+    return saved === 'staff' ? 'staff' : 'admin';
+  });
+  const [currentStaffName, setCurrentStaffName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const staffParam = params.get('staff');
+      if (staffParam) {
+        localStorage.setItem('active_staff_name', staffParam);
+        return staffParam;
+      }
+    }
+    return localStorage.getItem('active_staff_name') || 'NV1: Dũng';
+  });
   const [staffFilterOnly, setStaffFilterOnly] = useState<boolean>(true);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Sync activeApp with local state configurations
+  useEffect(() => {
+    localStorage.setItem('active_app', activeApp);
+    if (activeApp === 'admin') {
+      setCurrentUserRole('admin');
+      setStaffFilterOnly(false);
+    } else if (activeApp === 'staff') {
+      setCurrentUserRole('staff');
+      setStaffFilterOnly(true);
+      localStorage.setItem('active_staff_name', currentStaffName);
+    }
+  }, [activeApp, currentStaffName]);
 
   // Load initial tasks from storage or seed mock data
   useEffect(() => {
@@ -188,94 +245,313 @@ export default function App() {
     ? tasks.filter(t => t.assignee === currentStaffName)
     : tasks;
 
-  return (
-    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-      
-      {/* Top Banner & Multi-user verification bar */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+  // Render Cổng Thông Tin Portal (Lựa chọn phân hệ Admin / Nhân Viên độc lập)
+  if (activeApp === 'portal') {
+    const portalTotal = tasks.length;
+    const portalCompleted = tasks.filter(t => t.status === TaskStatus.HoanThanh).length;
+    const portalPending = tasks.filter(t => t.status !== TaskStatus.HoanThanh).length;
+
+    return (
+      <div className="min-h-screen bg-slate-900 font-sans flex flex-col justify-between text-white relative overflow-hidden">
+        {/* Decorative Grid Network & Ambient Light */}
+        <div className="absolute inset-0 bg-[radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-25 pointer-events-none"></div>
+        <div className="absolute top-1/4 -left-32 w-[450px] h-[450px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-1/4 -right-32 w-[450px] h-[450px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        {/* Global Portal Top Bar */}
+        <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 w-full z-10 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center space-x-3.5 select-none">
+            <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-900/40 shrink-0">
+              <Building2 className="w-5.5 h-5.5" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-wider text-white uppercase">HỆ THỐNG QUẢN LÝ CÔNG VIỆC</h1>
+              <p className="text-[10px] text-slate-450 font-bold tracking-widest uppercase text-slate-400">Điều phối, Sửa chữa & Bảo trì kỹ thuật</p>
+            </div>
+          </div>
+          <div className="text-[11px] font-extrabold text-slate-300 bg-slate-800/65 px-4 py-2 border border-slate-700/50 rounded-2xl flex items-center space-x-2 backdrop-blur-md shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-450 animate-pulse bg-emerald-450"></span>
+            <span className="tracking-wider uppercase">MÁY CHỦ KỸ THUẬT ONLINE</span>
+          </div>
+        </header>
+
+        {/* Dynamic App Options (Tách biệt Admin & Staff) */}
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full z-10 flex flex-col justify-center flex-1">
+          <div className="text-center mb-10 max-w-2xl mx-auto animate-fade-in">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight uppercase font-sans">
+              CỔNG PHÂN HỆ LÀM VIỆC ĐỘC LẬP
+            </h2>
+            <p className="text-slate-300 mt-3 text-sm sm:text-base font-medium">
+              Vui lòng lựa chọn giao diện làm việc thích hợp. Chương trình tự động áp dụng chế độ bảo mật và đặc quyền nghiệp vụ tùy chỉnh.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch animate-fade-in">
             
-            {/* Title Brand */}
-            <div className="flex items-center space-x-2 sm:space-x-3 select-none">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-200 shrink-0">
-                <Building2 className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+            {/* 1. ADMIN CARD & SUB-INTERFACE */}
+            <div className="bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/60 hover:border-indigo-500/55 rounded-3xl p-6 sm:p-8 transition-all duration-300 flex flex-col justify-between shadow-2xl shadow-black/40 relative group backdrop-blur-md">
+              <div className="absolute top-4 right-4 bg-indigo-500/10 text-indigo-400 text-[9px] font-black px-2.5 py-1 rounded-lg border border-indigo-500/20 uppercase tracking-widest">
+                ĐIỀU PHỐI CHÍNH
               </div>
+              
               <div>
-                <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-wide whitespace-nowrap">Quản Lý Công Việc</h1>
-                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase hidden sm:block">Hệ Thống Phân Công Kỹ Thuật</p>
+                <div className="w-12 h-12 bg-indigo-500/15 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 border border-indigo-500/25 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-550 transition-all duration-300 shadow-md">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-extrabold text-white group-hover:text-indigo-400 transition-all duration-200">ADMIN APP (Tuy Trần)</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-1">Hệ điều hành giao việc & Phê duyệt tổng</p>
+                
+                <ul className="text-xs text-slate-300 mt-6 space-y-3">
+                  <li className="flex items-start space-x-2.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                    <span><b>Toàn quyền hệ thống</b>: Khởi động, bàn giao, biên tập và xóa vĩnh viễn các phiếu sự cố.</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                    <span><b>Nghiệm thu tiến trình</b>: Theo dõi biểu đồ tổng quan, trực ban phê chuẩn bàn giao từ kỹ thuật viên.</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full mt-1.5 shrink-0"></span>
+                    <span><b>Quản trị kỹ thuật</b>: Đặt lại dữ liệu gốc, sao lưu & khôi phục danh mục công việc JSON nhanh chóng.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveApp('admin');
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs sm:text-sm py-4 px-5 rounded-2xl shadow-lg shadow-indigo-900/55 transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.98] select-none"
+                >
+                  <span>Truy cập Quản Trị (Tuy Trần)</span>
+                  <ArrowRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                </button>
               </div>
             </div>
 
-            {/* Quick Session user / simulator (Giao việc) */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* 2. STAFF CARD & SUB-INTERFACE */}
+            <div className="bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/60 hover:border-emerald-500/55 rounded-3xl p-6 sm:p-8 transition-all duration-300 flex flex-col justify-between shadow-2xl shadow-black/40 relative group backdrop-blur-md">
+              <div className="absolute top-4 right-4 bg-emerald-500/10 text-emerald-400 text-[9px] font-black px-2.5 py-1 rounded-lg border border-emerald-500/20 uppercase tracking-widest">
+                KIỂM SOÁT THỰC ĐỊA
+              </div>
               
-              <div className="hidden md:flex items-center space-x-2 bg-indigo-50/50 border border-indigo-100 px-3 py-1.5 rounded-full">
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
-                <span className="text-[11px] text-slate-500 font-semibold">Người giao việc mặc định:</span>
-                <span className="text-xs font-bold text-slate-800">{currentUserEmail}</span>
+              <div>
+                <div className="w-12 h-12 bg-emerald-500/15 text-emerald-450 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/25 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-550 transition-all duration-300 shadow-md">
+                  <Users className="w-6 h-6 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-extrabold text-white group-hover:text-emerald-450 transition-all duration-200">STAFF APP (Kỹ thuật viên)</h3>
+                <p className="text-xs text-slate-400 font-semibold mt-1">Cổng nhận nhiệm vụ & Gửi báo cáo tiến trình</p>
                 
-                <button 
-                  onClick={() => {
-                    setTempEmailInput(currentUserEmail);
-                    setIsSimulatingUser(!isSimulatingUser);
-                  }}
-                  className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline ml-1 cursor-pointer"
-                >
-                  [Thay đổi]
-                </button>
+                <div className="mt-6 space-y-4">
+                  <div className="bg-slate-900/65 rounded-2xl p-3 border border-slate-700/60">
+                    <label className="block text-[10px] font-black text-emerald-400 uppercase tracking-wider mb-1.5">
+                      Chọn Tên Của Bạn Để Đăng Nhập:
+                    </label>
+                    <select
+                      value={currentStaffName}
+                      onChange={(e) => setCurrentStaffName(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 focus:border-emerald-500 focus:outline-none rounded-xl text-xs px-3 py-2.5 text-white font-bold cursor-pointer"
+                    >
+                      {STAFF_LIST.map((staff) => (
+                        <option key={staff} value={staff} className="bg-slate-900 text-white font-bold">
+                          {staff}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <ul className="text-xs text-slate-300 space-y-3">
+                    <li className="flex items-start space-x-2.5">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-1.5 shrink-0"></span>
+                      <span><b>Bảo mật thông tin</b>: Hệ thống chỉ hiển thị các công việc được giao riêng cho tài khoản của bạn.</span>
+                    </li>
+                    <li className="flex items-start space-x-2.5">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-1.5 shrink-0"></span>
+                      <span><b>Báo cáo tức thời</b>: Cập nhật nhanh trạng thái công việc và đính kèm tệp tin hình ảnh làm minh chứng.</span>
+                    </li>
+                    <li className="flex items-start space-x-2.5">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-1.5 shrink-0"></span>
+                      <span><b>Cam kết thi hành</b>: Không thể tùy chỉnh thay đổi các thông số lõi như Hạn hoàn thành, Độ ưu tiên.</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
-              {/* Mobile Profile Trigger */}
-              <button 
-                onClick={() => {
-                  setTempEmailInput(currentUserEmail);
-                  setIsSimulatingUser(!isSimulatingUser);
-                }}
-                className="md:hidden p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition"
-                title="Thay đổi user"
-              >
-                <UserCheck className="w-4.5 h-4.5 text-indigo-600" />
-              </button>
-
-              {/* Create job shortcut */}
-              {currentUserRole === 'admin' ? (
+              <div className="mt-6">
                 <button
+                  type="button"
+                  onClick={() => {
+                    setActiveApp('staff');
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-4 px-5 rounded-2xl shadow-lg shadow-emerald-900/40 transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.98] select-none"
+                >
+                  <Wrench className="w-4 h-4 text-emerald-100 shrink-0" />
+                  <span>Xác nhận & Vào Phân Hệ Nhân Viên</span>
+                  <ArrowRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Quick Counter overview */}
+          <div className="grid grid-cols-3 gap-4 text-center py-4.5 px-6 bg-slate-800/20 border border-slate-700/35 rounded-2xl mt-8 max-w-md mx-auto backdrop-blur-md shadow-md">
+            <div>
+              <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider text-slate-400">Tổng Phiếu Việc</p>
+              <h4 className="text-lg font-black text-white mt-0.5">{portalTotal}</h4>
+            </div>
+            <div className="border-x border-slate-700/50">
+              <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider text-amber-500">Đang Thực Hiện</p>
+              <h4 className="text-lg font-black text-amber-500 mt-0.5">{portalPending}</h4>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider text-emerald-400">Đã Hoàn Thành</p>
+              <h4 className="text-lg font-black text-emerald-400 mt-0.5">{portalCompleted}</h4>
+            </div>
+          </div>
+
+        </main>
+
+        {/* Global Footer */}
+        <footer className="py-6 border-t border-slate-800/50 max-w-7xl mx-auto px-4 w-full z-10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+          <p className="font-semibold text-center sm:text-left text-slate-500">
+            Hệ thống Quản lý Sự cố & Phân phối Kỹ thuật © 2026. Phân định vai trò nghiệp vụ tiêu chuẩn Tuy Trần.
+          </p>
+          <div className="flex space-x-4 font-bold text-slate-400">
+            <span>Phiên bản v2.5.0</span>
+            <span>|</span>
+            <span>Enterprise Gateway Portal</span>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+      
+      {/* Dynamic header with different styles for Admin (Dark Indigo) and Staff (Dark Emerald) */}
+      <header className={`sticky top-0 z-40 shadow-md border-b transition-all duration-300 ${
+        currentUserRole === 'admin' 
+          ? 'bg-slate-900 border-slate-800 text-white' 
+          : 'bg-emerald-950 border-emerald-900 text-white'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            
+            {/* Logo and App Brand Title */}
+            <div className="flex items-center space-x-3 select-none">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0 transition-all duration-300 ${
+                currentUserRole === 'admin' ? 'bg-indigo-600 shadow-indigo-900/40' : 'bg-emerald-600 shadow-emerald-950/40'
+              }`}>
+                {currentUserRole === 'admin' ? <Shield className="w-5 h-5 text-indigo-100" /> : <Wrench className="w-5 h-5 text-emerald-100" />}
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-sm sm:text-base font-black tracking-wide whitespace-nowrap uppercase">
+                    {currentUserRole === 'admin' ? 'Hệ Thống Quản Trị' : 'Phân Hệ Kỹ Thuật'}
+                  </h1>
+                  <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border tracking-wider shrink-0 hidden xs:inline-block transition-all ${
+                    currentUserRole === 'admin' 
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-550/30' 
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-550/30'
+                  }`}>
+                    {currentUserRole === 'admin' ? 'ADMIN APP' : 'STAFF APP'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
+                  {currentUserRole === 'admin' 
+                    ? 'Tuy Trần (Người Điều phối)' 
+                    : `Kỹ thuật viên: ${currentStaffName}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Middle Quick Info Badge */}
+            {currentUserRole === 'staff' ? (
+              <div className="hidden md:flex items-center space-x-2 bg-emerald-900/35 border border-emerald-800/80 px-3.5 py-1.5 rounded-full select-none">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] text-emerald-350 font-bold">Chỉ hiển thị công việc kỹ thuật được giao</span>
+              </div>
+            ) : (
+              isSimulatingUser && (
+                <div className="hidden lg:flex items-center space-x-2 bg-slate-800 border border-slate-700/80 px-3.5 py-1.5 rounded-full text-xs">
+                  <span className="text-[11px] text-slate-400 font-medium">Người tạo làm việc: {currentUserEmail}</span>
+                </div>
+              )
+            )}
+
+            {/* Right Side Header controls */}
+            <div className="flex items-center space-x-2.5 sm:space-x-3.5">
+              
+              {/* Optional Admin SIM button */}
+              {currentUserRole === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => setIsSimulatingUser(!isSimulatingUser)}
+                  className="hidden md:flex items-center space-x-1.5 px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 transition duration-150 cursor-pointer border border-slate-700/60"
+                  title="Thay đổi tên người giao việc mặc định"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Đổi người giao</span>
+                </button>
+              )}
+
+              {/* Admin-only direct Create Task button */}
+              {currentUserRole === 'admin' && (
+                <button
+                  type="button"
                   onClick={() => {
                     setTaskToEdit(undefined);
                     setIsFormOpen(true);
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-1.5 text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-md shadow-indigo-150 transition cursor-pointer select-none"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4.5 py-2 text-xs font-black rounded-xl flex items-center space-x-1.5 shadow-md shadow-indigo-950/60 transition duration-150 cursor-pointer select-none"
                 >
-                  <PlusCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Giao Việc</span>
+                  <PlusCircle className="w-4 h-4 text-indigo-200" />
+                  <span>Giao Việc</span>
                 </button>
-              ) : (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-bold border border-slate-200">
-                  <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Kỹ thuật viên</span>
-                </span>
               )}
+
+              {/* Back to Portal (Switch Roles) logout button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentUserRole === 'admin' || window.confirm('Quay lại cổng thông tin chính và đổi phân hệ làm việc?')) {
+                    setActiveApp('portal');
+                  }
+                }}
+                className={`flex items-center space-x-1.5 px-3 py-2 text-xs font-black rounded-xl border transition duration-150 cursor-pointer select-none active:scale-[0.98] ${
+                  currentUserRole === 'admin'
+                    ? 'border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white'
+                    : 'border-emerald-800 hover:bg-emerald-900/60 hover:border-emerald-700 text-emerald-200 hover:text-white'
+                }`}
+                title="Quay lại cổng thông tin chính"
+              >
+                <LogOut className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Thoát Phân Hệ</span>
+              </button>
 
             </div>
 
           </div>
         </div>
 
-        {/* User simulated editing bar */}
-        {isSimulatingUser && (
-          <div className="bg-indigo-50 border-y border-indigo-100 p-3 animate-fade-in text-slate-700">
+        {/* User simulated email editing panel (Admin only) */}
+        {currentUserRole === 'admin' && isSimulatingUser && (
+          <div className="bg-slate-800 border-t border-slate-700/60 p-3 animate-fade-in text-slate-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center space-x-2">
-                <ShieldAlert className="w-4 h-4 text-indigo-600 shrink-0" />
-                <p className="font-semibold text-indigo-900">
-                  Phân quyền Người Giao Việc: Bạn có thể thay đổi tên người giao việc mặc định khi tạo mới yêu cầu.
+                <ShieldAlert className="w-4 h-4 text-indigo-400 shrink-0" />
+                <p className="font-semibold text-slate-300">
+                  Phân quyền Người Giao Việc: Bạn có thể thay đổi tên người giao việc mặc định khi tạo mới yêu cầu kỹ thuật.
                 </p>
               </div>
               <form onSubmit={applySimulatedUser} className="flex gap-2 w-full sm:w-auto">
                 <input
                   type="text"
-                  className="px-2.5 py-1 text-xs border border-indigo-200 focus:border-indigo-500 rounded bg-white flex-1 sm:w-60 font-semibold text-slate-800"
+                  className="px-3 py-1.5 text-xs border border-slate-750 bg-slate-900 focus:border-indigo-500 rounded-lg text-white font-medium"
                   value={tempEmailInput}
                   onChange={(e) => setTempEmailInput(e.target.value)}
                   placeholder="Nhập họ tên người giao..."
@@ -283,7 +559,7 @@ export default function App() {
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-indigo-600 text-white font-bold text-[11px] rounded hover:bg-indigo-700 cursor-pointer"
+                  className="px-3 py-1.5 bg-indigo-600 text-white font-bold text-[11px] rounded-lg hover:bg-indigo-700 cursor-pointer"
                 >
                   Áp dụng
                 </button>
@@ -292,87 +568,6 @@ export default function App() {
           </div>
         )}
       </header>
-
-      {/* Role and permission control deck */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 py-3 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          
-          <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold text-slate-300">PHÂN QUYỀN VAI TRÒ:</span>
-            </div>
-            
-            {/* Toggle buttons */}
-            <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-              <button
-                onClick={() => {
-                  setCurrentUserRole('admin');
-                  setStaffFilterOnly(false);
-                }}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                  currentUserRole === 'admin' 
-                    ? 'bg-indigo-600 text-white shadow-sm font-extrabold' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5 text-indigo-300" />
-                <span>ADMIN (Tuy Trần)</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setCurrentUserRole('staff');
-                  setStaffFilterOnly(true);
-                }}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
-                  currentUserRole === 'staff' 
-                    ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 text-amber-950" />
-                <span>NHÂN VIÊN (Nhận việc)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* If Employee is selected: select specific employee */}
-          <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-            {currentUserRole === 'staff' ? (
-              <div className="flex items-center space-x-2 bg-slate-800/85 border border-slate-750 px-3 py-1.5 rounded-xl w-full sm:w-auto">
-                <span className="text-slate-400 font-medium">Chọn nhân viên:</span>
-                <select
-                  value={currentStaffName}
-                  onChange={(e) => setCurrentStaffName(e.target.value)}
-                  className="bg-transparent text-amber-300 outline-none border-none focus:ring-0 cursor-pointer text-xs p-0 font-bold"
-                >
-                  {STAFF_LIST.map((staff) => (
-                    <option key={staff} value={staff} className="bg-slate-900 text-white font-bold">
-                      {staff}
-                    </option>
-                  ))}
-                </select>
-                
-                <label className="flex items-center space-x-1.5 pl-2.5 border-l border-slate-700 cursor-pointer select-none text-slate-300 focus-within:text-white">
-                  <input
-                    type="checkbox"
-                    checked={staffFilterOnly}
-                    onChange={(e) => setStaffFilterOnly(e.target.checked)}
-                    className="rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
-                  />
-                  <span>Chỉ hiện việc của tôi</span>
-                </label>
-              </div>
-            ) : (
-              <div className="text-[11px] text-slate-300 font-medium bg-slate-800/50 py-1.5 px-3 rounded-xl border border-slate-700/50 flex items-center space-x-1.5 w-full sm:w-auto justify-center">
-                <span>Chế độ <b>Tuy Trần (Admin)</b>: Toàn quyền Tạo mới, Sửa, Xóa, Phê duyệt công việc hoàn thành.</span>
-              </div>
-            )}
-          </div>
-
-        </div>
-      </div>
 
       {/* Workspace Menu navigation Tabs */}
       <nav className="bg-white border-b border-slate-150 shadow-xs">
@@ -423,42 +618,58 @@ export default function App() {
               </div>
             </div>
 
-            {/* Utility Deck (Import Export backup, Seed database) */}
-            <div className="flex items-center space-x-3 text-xs self-end sm:self-center">
-              
-              <button
-                onClick={handleExportBackup}
-                className="p-1 px-2.5 text-slate-500 hover:text-slate-700 bg-slate-55 border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer"
-                title="Xuất file lưu trữ JSON"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Sao lưu</span>
-              </button>
+            {/* Utility Deck (Import Export backup, Seed database) - ADMIN ONLY */}
+            {currentUserRole === 'admin' ? (
+              <div className="flex items-center space-x-3 text-xs self-end sm:self-center">
+                
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="p-1.5 px-3.5 text-indigo-700 hover:text-white bg-indigo-50 hover:bg-indigo-650 border border-indigo-200 hover:border-indigo-600 rounded-xl flex items-center space-x-1.5 font-bold transition duration-150 cursor-pointer shadow-sm"
+                  title="Chia sẻ đường dẫn truy cập và mời nhân viên"
+                >
+                  <Share2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Chia sẻ App</span>
+                </button>
 
-              <label
-                className="p-1 px-2.5 text-slate-500 hover:text-slate-700 bg-slate-55 border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer select-none"
-                title="Nhập dữ liệu từ file JSON"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Khôi phục</span>
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={handleImportBackup}
-                  accept=".json"
-                />
-              </label>
+                <button
+                  onClick={handleExportBackup}
+                  className="p-1 px-2.5 text-slate-500 hover:text-slate-700 bg-slate-55 border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer"
+                  title="Xuất file lưu trữ JSON"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Sao lưu</span>
+                </button>
 
-              <button
-                onClick={handleResetDatabase}
-                className="p-1 px-2.5 text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer"
-                title="Khôi phục lại dữ liệu gốc ban đầu"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Đặt Lại</span>
-              </button>
+                <label
+                  className="p-1 px-2.5 text-slate-500 hover:text-slate-700 bg-slate-55 border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer select-none"
+                  title="Nhập dữ liệu từ file JSON"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Khôi phục</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleImportBackup}
+                    accept=".json"
+                  />
+                </label>
 
-            </div>
+                <button
+                  onClick={handleResetDatabase}
+                  className="p-1 px-2.5 text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer"
+                  title="Khôi phục lại dữ liệu gốc ban đầu"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Đặt Lại</span>
+                </button>
+
+              </div>
+            ) : (
+              <div className="text-xs font-bold self-end sm:self-center bg-emerald-50 text-emerald-800 border border-emerald-150 px-3.5 py-1.5 rounded-xl select-none">
+                Đăng nhập: {currentStaffName}
+              </div>
+            )}
 
           </div>
         </div>
@@ -555,6 +766,14 @@ export default function App() {
             handleDeleteTask(id);
           }}
           onChangeStatus={handleChangeStatus}
+        />
+      )}
+
+      {/* Global Share App Link Modal */}
+      {isShareModalOpen && (
+        <ShareModal
+          staffList={STAFF_LIST}
+          onClose={() => setIsShareModalOpen(false)}
         />
       )}
 
