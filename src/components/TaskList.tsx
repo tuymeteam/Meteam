@@ -253,8 +253,8 @@ export default function TaskList({
 
       </div>
 
-      {/* Spreadsheet / Records View */}
-      <div className="overflow-x-auto">
+      {/* Spreadsheet / Records View (Desktop Only) */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 text-[11px] font-bold uppercase tracking-widest select-none">
@@ -436,6 +436,139 @@ export default function TaskList({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card Deck List View (Screen < md) */}
+      <div className="block md:hidden divide-y divide-slate-105">
+        {sortedTasks.map((t) => {
+          const catSpec = categoryColors[t.category];
+          const isOverdue = new Date(t.dueDate) < new Date() && t.status !== TaskStatus.HoanThanh;
+
+          return (
+            <div 
+              key={t.id}
+              className="p-4 space-y-3.5 bg-white hover:bg-slate-50/50 active:bg-slate-50 transition"
+            >
+              {/* Card Header & Badges */}
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-black text-slate-900 bg-slate-100 px-2 py-0.5 text-[10px] rounded">
+                  {t.id}
+                </span>
+
+                <div className="flex items-center space-x-1.5">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${catSpec.bg}`}>
+                    {catSpec.icon}
+                    <span>{t.category}</span>
+                  </span>
+
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${priorityColors[t.priority]}`}>
+                    {t.priority}
+                  </span>
+                </div>
+              </div>
+
+              {/* Task description */}
+              <div onClick={() => onSelectTask(t)} className="cursor-pointer">
+                <p className="text-xs text-slate-700 leading-relaxed font-sans line-clamp-3">
+                  {t.details}
+                </p>
+              </div>
+
+              {/* Additional Metadata Details rows */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-500 pt-1 border-t border-slate-50/60">
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-extrabold uppercase text-[8px] tracking-wider">Người nhận</div>
+                  <div className="flex items-center space-x-1 text-slate-700 font-semibold">
+                    <User className="w-3 h-3 text-slate-400" />
+                    <span className="truncate">{t.assignee || '—'}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-extrabold uppercase text-[8px] tracking-wider">Người giao</div>
+                  <div className="text-slate-600 truncate font-mono">{t.creator}</div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-extrabold uppercase text-[8px] tracking-wider">Hạn xong</div>
+                  <div className={`flex items-center space-x-1 font-bold ${isOverdue ? 'text-rose-600' : 'text-slate-700'}`}>
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    <span>{t.dueDate}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-slate-400 font-extrabold uppercase text-[8px] tracking-wider">Trạng thái</div>
+                  <div>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${statusColors[t.status]}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Toolbar on mobile */}
+              <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 bg-slate-50/20 -mx-4 px-4">
+                <div className="flex items-center text-[10px] text-slate-400">
+                  {t.attachment ? (
+                    <span className="inline-flex items-center space-x-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
+                      <FileText className="w-3 h-3" />
+                      <span className="truncate max-w-[100px] text-[8px]">{t.attachment.name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-350 text-[9px]">Chưa đính kèm tệp</span>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  {/* Read-view button */}
+                  <button
+                    onClick={() => onSelectTask(t)}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition cursor-pointer"
+                    title="Xem chi tiết"
+                  >
+                    <Eye className="w-4.5 h-4.5" />
+                  </button>
+
+                  {/* Edit button */}
+                  <button
+                    onClick={() => onEditTask(t)}
+                    className="p-2 text-amber-600 hover:bg-amber-50 rounded-full transition cursor-pointer"
+                    title="Sửa công việc"
+                  >
+                    <Edit3 className="w-4.5 h-4.5" />
+                  </button>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
+                        onDeleteTask(t.id);
+                      }
+                    }}
+                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition cursor-pointer"
+                    title="Xóa công việc"
+                  >
+                    <Trash2 className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {sortedTasks.length === 0 && (
+          <div className="py-12 px-4 text-center text-slate-400">
+            <p className="font-bold text-sm text-slate-600">Không tìm thấy công việc nào</p>
+            <p className="text-xs">Tắt bớt bộ lọc để hiển thị nhiều thông tin hơn.</p>
+            <button
+              onClick={resetFilters}
+              className="mt-3 inline-flex items-center space-x-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              <span>Về mặc định</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Length count display footer */}

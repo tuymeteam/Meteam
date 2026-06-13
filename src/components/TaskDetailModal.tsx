@@ -72,8 +72,8 @@ export default function TaskDetailModal({
   const catStyle = categoryColors[task.category];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 z-50 animate-fade-in">
+      <div className="bg-white rounded-t-3xl rounded-b-none sm:rounded-3xl max-w-2xl w-full border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] self-end sm:self-center">
         
         {/* Header bar */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
