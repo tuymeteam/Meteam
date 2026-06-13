@@ -5,7 +5,6 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    <script type="module" src="/index.tsx"></script>
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

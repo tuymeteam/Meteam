@@ -1,6 +1,6 @@
 {
-  "name": "Quan ly Cong viec",
-  "description": "He thong quan ly cong viec ky thuat cho Dien, Nuoc, May lanh, Chieu sang va cac cong viec khac",
+  "name": "Task Management App",
+  "description": "Technical task management system for maintenance",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
