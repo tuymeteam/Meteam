@@ -1,0 +1,6 @@
+{
+  "name": "Quản lý Công việc",
+  "description": "Ứng dụng quản lý công việc kỹ thuật chuyên nghiệp cho các danh mục Điện, Nước, Máy lạnh, Chiếu sáng và các công việc khác với đầy đủ tệp đính kèm và phân quyền.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
