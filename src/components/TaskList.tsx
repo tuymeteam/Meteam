@@ -30,6 +30,8 @@ interface TaskListProps {
   onAddTask: () => void;
   categoryFilter: Category | 'All';
   onFilterCategory: (cat: Category | 'All') => void;
+  currentUserRole?: 'admin' | 'staff';
+  currentStaffName?: string;
 }
 
 type SortField = 'id' | 'dueDate' | 'priority' | 'status' | 'category' | 'createdAt';
@@ -42,7 +44,9 @@ export default function TaskList({
   onDeleteTask,
   onAddTask,
   categoryFilter,
-  onFilterCategory
+  onFilterCategory,
+  currentUserRole = 'admin',
+  currentStaffName = ''
 }: TaskListProps) {
   // Filters state
   const [searchTerm, setSearchTerm] = useState('');
@@ -190,13 +194,15 @@ export default function TaskList({
             )}
 
             {/* Quick add task trigger */}
-            <button
-              onClick={onAddTask}
-              className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Giao việc mới</span>
-            </button>
+            {currentUserRole === 'admin' && (
+              <button
+                onClick={onAddTask}
+                className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Giao việc mới</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -392,25 +398,29 @@ export default function TaskList({
                         <Eye className="w-4 h-4" />
                       </button>
 
-                      <button
-                        onClick={() => onEditTask(t)}
-                        className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                        title="Sửa công việc"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
+                      {currentUserRole === 'admin' && (
+                        <>
+                          <button
+                            onClick={() => onEditTask(t)}
+                            className="p-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                            title="Sửa công việc"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
 
-                      <button
-                        onClick={() => {
-                          if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
-                            onDeleteTask(t.id);
-                          }
-                        }}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                        title="Xóa công việc"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
+                                onDeleteTask(t.id);
+                              }
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                            title="Xóa công việc"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
 
@@ -530,27 +540,31 @@ export default function TaskList({
                     <Eye className="w-4.5 h-4.5" />
                   </button>
 
-                  {/* Edit button */}
-                  <button
-                    onClick={() => onEditTask(t)}
-                    className="p-2 text-amber-600 hover:bg-amber-50 rounded-full transition cursor-pointer"
-                    title="Sửa công việc"
-                  >
-                    <Edit3 className="w-4.5 h-4.5" />
-                  </button>
+                  {currentUserRole === 'admin' && (
+                    <>
+                      {/* Edit button */}
+                      <button
+                        onClick={() => onEditTask(t)}
+                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-full transition cursor-pointer"
+                        title="Sửa công việc"
+                      >
+                        <Edit3 className="w-4.5 h-4.5" />
+                      </button>
 
-                  {/* Delete button */}
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
-                        onDeleteTask(t.id);
-                      }
-                    }}
-                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition cursor-pointer"
-                    title="Xóa công việc"
-                  >
-                    <Trash2 className="w-4.5 h-4.5" />
-                  </button>
+                      {/* Delete button */}
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Bạn có chắc chắn muốn xóa công việc này?')) {
+                            onDeleteTask(t.id);
+                          }
+                        }}
+                        className="p-1 px-2.5 text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-lg flex items-center space-x-1.5 font-bold transition cursor-pointer"
+                        title="Xóa công việc"
+                      >
+                        <Trash2 className="w-4.5 h-4.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

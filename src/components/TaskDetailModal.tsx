@@ -27,6 +27,8 @@ interface TaskDetailModalProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onChangeStatus: (id: string, newStatus: TaskStatus) => void;
+  currentUserRole?: 'admin' | 'staff';
+  currentStaffName?: string;
 }
 
 export default function TaskDetailModal({ 
@@ -34,8 +36,299 @@ export default function TaskDetailModal({
   onClose, 
   onEdit, 
   onDelete, 
-  onChangeStatus 
+  onChangeStatus,
+  currentUserRole = 'admin',
+  currentStaffName = ''
 }: TaskDetailModalProps) {
+
+  const isAssignedToMe = task.assignee === currentStaffName;
+  const isCompleted = task.status === TaskStatus.HoanThanh;
+  const canModifyStatus = currentUserRole === 'admin' || (isAssignedToMe && !isCompleted);
+
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Vui lòng cho phép mở cửa sổ pop-up để tự động xuất và tải báo cáo PDF!');
+      return;
+    }
+
+    const categoryText = task.category;
+    const priorityText = task.priority;
+    const statusText = task.status;
+    const detailNotes = task.details.replace(/\n/g, '<br/>');
+    const attachmentHTML = task.attachment && task.attachment.type.startsWith('image/') 
+      ? `<div style="margin-top: 25px; text-align: center;">
+          <h3 style="font-size: 13px; color: #475569; margin-bottom: 12px; text-align: left; border-bottom: 2px dashed #e2e8f0; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">ẢNH MINH CHỨNG / THỰC TẾ CHI TIẾT:</h3>
+          <img src="${task.attachment.data}" style="max-height: 380px; max-width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background-color: #f8fafc;" />
+          <p style="font-size: 10px; color: #64748b; margin-top: 8px; font-style: italic;">Hồ sơ đính kèm số: ${task.attachment.name}</p>
+        </div>`
+      : task.attachment 
+        ? `<div style="margin-top: 25px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>Tập tin đính kèm kỹ thuật:</strong> ${task.attachment.name}
+            </div>
+            <div style="color: #64748b; font-size: 11px;">
+              Dung lượng: ${(task.attachment.size / 1024).toFixed(1)} KB (Đã bảo mật hệ thống)
+            </div>
+          </div>`
+        : '';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>PHIEU_CONG_VIEC_${task.id}</title>
+        <meta charset="utf-8" />
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+          body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px;
+            background: #ffffff;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px double #0f172a;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+          }
+          .header-left h1 {
+            font-size: 18px;
+            margin: 0;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #1e3b8a;
+          }
+          .header-left p {
+            font-size: 11px;
+            margin: 5px 0 0 0;
+            color: #475569;
+            font-weight: 600;
+          }
+          .doc-id {
+            background: #e0f2fe;
+            border: 1px solid #bae6fd;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 14px;
+            color: #0369a1;
+            font-family: monospace;
+          }
+          .title-area {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .title-area h2 {
+            font-size: 22px;
+            margin: 0;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 800;
+          }
+          .title-area p {
+            font-size: 12px;
+            margin: 8px 0 0 0;
+            color: #64748b;
+          }
+          .status-banner {
+            text-align: center;
+            background: #f0fdf4;
+            border: 1.5px solid #16a34a;
+            color: #15803d;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
+          }
+          .grid-info {
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+          }
+          .info-item {
+            font-size: 13px;
+          }
+          .info-item strong {
+            color: #475569;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            width: 130px;
+          }
+          .info-item span {
+            color: #0f172a;
+            font-weight: 700;
+          }
+          .details-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            background: #ffffff;
+          }
+          .details-box h3 {
+            margin-top: 0;
+            font-size: 12px;
+            color: #1e293b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+          }
+          .details-content {
+            font-size: 13.5px;
+            line-height: 1.7;
+            color: #334155;
+            white-space: pre-line;
+            font-family: 'Merriweather', serif;
+          }
+          .signatures {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            page-break-inside: avoid;
+          }
+          .sig-col {
+            width: 45%;
+            text-align: center;
+          }
+          .sig-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #475569;
+            margin-bottom: 65px;
+            letter-spacing: 1px;
+          }
+          .sig-name {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #0f172a;
+            border-top: 1px solid #e2e8f0;
+            display: inline-block;
+            padding-top: 6px;
+            min-width: 150px;
+          }
+          .print-btn-no {
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          @media print {
+            .no-print {
+              display: none !important;
+            }
+            body {
+              padding: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print print-btn-no">
+          <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 12px 24px; font-family: sans-serif; font-weight: 800; font-size: 13px; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3); transition: all 0.2s;">
+            ⎙ TICK VÀO ĐÂY ĐỂ IN NHANH HOẶC LƯU FILE PDF
+          </button>
+        </div>
+
+        <div class="header">
+          <div class="header-left">
+            <h1>HỆ THỐNG PHÂN PHỐI SỰ CỐ KỸ THUẬT</h1>
+            <p>CHỦ TRÌ ĐIỀU PHỐI GIAO VIỆC: TUY TRẦN</p>
+          </div>
+          <div class="doc-id">
+            ${task.id}
+          </div>
+        </div>
+
+        <div class="title-area">
+          <h2>PHIẾU BÁO CÁO CHI TIẾT CÔNG VIỆC</h2>
+          <p>Xuất bản ngày: ${new Date().toLocaleDateString('vi-VN')} vào lúc ${new Date().toLocaleTimeString('vi-VN')}</p>
+        </div>
+
+        ${statusText === TaskStatus.HoanThanh ? `
+          <div class="status-banner">
+            ✓ NÀY LÀ CÔNG VIỆC ĐÃ HOÀN THÀNH - CHỜ NGHIỆM THU ĐẦY ĐỦ
+          </div>
+        ` : `
+          <div class="status-banner" style="background: #fffbeb; border-color: #d97706; color: #b45309;">
+            ● TRẠNG THÁI HIỆN TẠI: ${statusText.toUpperCase()}
+          </div>
+        `}
+
+        <div class="grid-info">
+          <div class="info-item">
+            <strong>Tên Danh mục:</strong>
+            <span>${categoryText}</span>
+          </div>
+          <div class="info-item">
+            <strong>Độ ưu tiên:</strong>
+            <span style="color: ${priorityText === Priority.Cao ? '#ef4444' : priorityText === Priority.TrungBinh ? '#f59e0b' : '#3b82f6'}">${priorityText}</span>
+          </div>
+          <div class="info-item">
+            <strong>Nhân viên xử lý:</strong>
+            <span>${task.assignee || 'Chưa nhận nhiệm vụ'}</span>
+          </div>
+          <div class="info-item">
+            <strong>Nguồn giao việc:</strong>
+            <span>${task.creator || 'Tuy Trần'}</span>
+          </div>
+          <div class="info-item">
+            <strong>Thời điểm hạn:</strong>
+            <span>${task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+          </div>
+          <div class="info-item">
+            <strong>Mã công việc:</strong>
+            <span>${task.id}</span>
+          </div>
+        </div>
+
+        <div class="details-box">
+          <h3>MÔ TẢ VÀ YÊU CẦU CHI TIẾT CÔNG VIỆC:</h3>
+          <div class="details-content">${detailNotes}</div>
+        </div>
+
+        ${attachmentHTML}
+
+        <div class="signatures">
+          <div class="sig-col">
+            <div class="sig-title">NHÂN VIÊN ĐƯỢC GIAO</div>
+            <div class="sig-name">${task.assignee || 'Ký ghi rõ họ tên'}</div>
+          </div>
+          <div class="sig-col">
+            <div class="sig-title">NGƯỜI GIAO VIỆC (TUY TRẦN)</div>
+            <div class="sig-name">${task.creator || 'Tuy Trần'}</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 350);
+          }
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const categoryColors = {
     [Category.Nuoc]: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: <Droplet className="w-5 h-5" /> },
@@ -157,7 +450,7 @@ export default function TaskDetailModal({
           </div>
 
           {/* Current Status Badge */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-150 rounded-2xl gap-3">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">Trạng thái hiện tại</p>
               <span className={`inline-block mt-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusColors[task.status]}`}>
@@ -166,27 +459,36 @@ export default function TaskDetailModal({
             </div>
             
             {/* Quick Status Action Hub */}
-            <div className="flex flex-col space-y-1 text-right">
+            <div className="flex flex-col space-y-1 sm:text-right">
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Thay đổi trạng thái</span>
-              <div className="flex flex-wrap gap-1 mt-1 justify-end">
-                {[
-                  TaskStatus.ChuaBatDau,
-                  TaskStatus.DangThucHien,
-                  TaskStatus.ChoDuyet,
-                  TaskStatus.HoanThanh
-                ].map(st => {
-                  if (st === task.status) return null;
-                  return (
-                    <button
-                      key={st}
-                      onClick={() => onChangeStatus(task.id, st)}
-                      className="text-[11px] font-semibold bg-white border border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600 px-2 py-1 rounded-md shadow-xs transition"
-                    >
-                      {st}
-                    </button>
-                  );
-                })}
-              </div>
+              {canModifyStatus ? (
+                <div className="flex flex-wrap gap-1 mt-1 justify-start sm:justify-end">
+                  {[
+                    TaskStatus.ChuaBatDau,
+                    TaskStatus.DangThucHien,
+                    TaskStatus.ChoDuyet,
+                    TaskStatus.HoanThanh
+                  ].map(st => {
+                    if (st === task.status) return null;
+                    if (currentUserRole === 'staff' && st === TaskStatus.HoanThanh) return null;
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => onChangeStatus(task.id, st)}
+                        className="text-[10px] font-bold bg-white border border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600 px-2.5 py-1 rounded-md shadow-xs transition cursor-pointer"
+                      >
+                        {st}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-bold bg-zinc-100 p-1.5 rounded-lg border border-zinc-200">
+                  {isCompleted 
+                    ? "✓ Đã hoàn thành (Chờ admin mở lại)"
+                    : `Chỉ dành cho ${task.assignee || 'người khác'}`}
+                </span>
+              )}
             </div>
           </div>
 
@@ -234,33 +536,66 @@ export default function TaskDetailModal({
 
         {/* Action footer */}
         <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3 justify-between">
-          <button
-            onClick={() => {
-              if (window.confirm('Bạn có chắc chắn muốn xóa công việc này không?')) {
-                onDelete(task.id);
-              }
-            }}
-            className="flex items-center justify-center space-x-2 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 font-bold rounded-xl transition cursor-pointer order-last sm:order-first"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Xóa công việc</span>
-          </button>
+          {currentUserRole === 'admin' ? (
+            <>
+              <button
+                onClick={() => {
+                  if (window.confirm('Bạn có chắc chắn muốn xóa công việc này không?')) {
+                    onDelete(task.id);
+                  }
+                }}
+                className="flex items-center justify-center space-x-2 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 font-bold rounded-xl transition cursor-pointer order-last sm:order-first"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Xóa công việc</span>
+              </button>
 
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-5 py-2.5 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-semibold text-xs rounded-xl transition cursor-pointer"
-            >
-              Đóng
-            </button>
-            <button
-              onClick={() => onEdit(task)}
-              className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>Chỉnh sửa</span>
-            </button>
-          </div>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 px-4.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition cursor-pointer"
+                  title="Xuất phiếu công việc ra tập tin PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Xuất PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 sm:flex-none px-5 py-2.5 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-semibold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onEdit(task)}
+                  className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-5 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>Chỉnh sửa</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="flex-1 flex items-center justify-center space-x-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Xuất báo cáo PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-xs rounded-xl shadow-sm transition cursor-pointer text-center"
+              >
+                Đóng cửa sổ chi tiết
+              </button>
+            </div>
+          )}
         </div>
 
       </div>

@@ -21,13 +21,17 @@ interface TaskBoardProps {
   onSelectTask: (task: Task) => void;
   onAddTask: () => void;
   onChangeStatus: (id: string, newStatus: TaskStatus) => void;
+  currentUserRole?: 'admin' | 'staff';
+  currentStaffName?: string;
 }
 
 export default function TaskBoard({ 
   tasks, 
   onSelectTask, 
   onAddTask, 
-  onChangeStatus 
+  onChangeStatus,
+  currentUserRole = 'admin',
+  currentStaffName = ''
 }: TaskBoardProps) {
   // Mobile active status column state
   const [activeMobileCol, setActiveMobileCol] = useState<TaskStatus>(TaskStatus.ChuaBatDau);
@@ -82,18 +86,29 @@ export default function TaskBoard({
     switch (curr) {
       case TaskStatus.ChuaBatDau: return TaskStatus.DangThucHien;
       case TaskStatus.DangThucHien: return TaskStatus.ChoDuyet;
-      case TaskStatus.ChoDuyet: return TaskStatus.HoanThanh;
+      case TaskStatus.ChoDuyet: 
+        // Only admin can transition to Completed!
+        if (currentUserRole === 'staff') return null;
+        return TaskStatus.HoanThanh;
       default: return null;
     }
   };
 
   const prevStatus = (curr: TaskStatus): TaskStatus | null => {
     switch (curr) {
-      case TaskStatus.HoanThanh: return TaskStatus.ChoDuyet;
+      case TaskStatus.HoanThanh: 
+        // Only admin can pull tasks back from Completed!
+        if (currentUserRole === 'staff') return null;
+        return TaskStatus.ChoDuyet;
       case TaskStatus.ChoDuyet: return TaskStatus.DangThucHien;
       case TaskStatus.DangThucHien: return TaskStatus.ChuaBatDau;
       default: return null;
     }
+  };
+
+  const canTransition = (task: Task): boolean => {
+    if (currentUserRole !== 'staff') return true;
+    return task.assignee === currentStaffName;
   };
 
   return (
@@ -216,37 +231,49 @@ export default function TaskBoard({
                         <div className="flex items-center space-x-1">
                           <button
                             onClick={() => onSelectTask(task)}
-                            className="text-[10px] text-indigo-600 font-semibold hover:bg-indigo-50 px-2 py-1 rounded transition border border-transparent hover:border-indigo-100"
+                            className="text-[10px] text-indigo-600 font-semibold hover:bg-indigo-50 px-2 py-1 rounded transition border border-transparent hover:border-indigo-100 cursor-pointer"
                           >
                             Chi tiết
                           </button>
 
-                          <div className="flex items-center border border-slate-100 rounded bg-slate-50 overflow-hidden">
-                            {/* Left transition */}
-                            {prevStatus(task.status) && (
-                              <button
-                                onClick={() => onChangeStatus(task.id, prevStatus(task.status)!)}
-                                className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition"
-                                title="Chuyển về trạng thái trước"
-                              >
-                                <ArrowLeft className="w-3 h-3" />
-                              </button>
-                            )}
-                            
-                            {/* Right transition */}
-                            {nextStatus(task.status) && (
-                              <button
-                                onClick={() => onChangeStatus(task.id, nextStatus(task.status)!)}
-                                className="p-1 hover:bg-slate-200 text-indigo-600 hover:text-indigo-800 transition"
-                                title="Chuyển sang trạng thái tiếp"
-                              >
-                                <ArrowRight className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
+                          {canTransition(task) && (prevStatus(task.status) || nextStatus(task.status)) ? (
+                            <div className="flex items-center border border-slate-100 rounded bg-slate-50 overflow-hidden">
+                              {/* Left transition */}
+                              {prevStatus(task.status) && (
+                                <button
+                                  onClick={() => onChangeStatus(task.id, prevStatus(task.status)!)}
+                                  className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                                  title="Chuyển về trạng thái trước"
+                                >
+                                  <ArrowLeft className="w-3 h-3" />
+                                </button>
+                              )}
+                              
+                              {/* Right transition */}
+                              {nextStatus(task.status) && (
+                                <button
+                                  onClick={() => onChangeStatus(task.id, nextStatus(task.status)!)}
+                                  className="p-1 hover:bg-slate-200 text-indigo-600 hover:text-indigo-800 transition cursor-pointer"
+                                  title="Chuyển sang trạng thái tiếp"
+                                >
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            currentUserRole === 'staff' && task.assignee !== currentStaffName ? (
+                              <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-medium select-none">
+                                việc của {task.assignee || 'người khác'}
+                              </span>
+                            ) : currentUserRole === 'staff' && task.status === TaskStatus.ChoDuyet ? (
+                              <span className="text-[9px] text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded font-bold select-none">
+                                Đang chờ Duyệt
+                              </span>
+                            ) : null
+                          )}
                         </div>
-
                       </div>
+
                     </div>
                   );
                 })}
@@ -262,7 +289,7 @@ export default function TaskBoard({
               </div>
 
               {/* Quick add button inside unpaid or not started column */}
-              {col.status === TaskStatus.ChuaBatDau && (
+              {col.status === TaskStatus.ChuaBatDau && currentUserRole === 'admin' && (
                 <button
                   onClick={onAddTask}
                   className="m-4 mt-0 p-2.5 border border-dashed border-indigo-200 text-indigo-600 bg-indigo-50/20 hover:bg-indigo-50/50 hover:border-indigo-400 text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1 cursor-pointer select-none"

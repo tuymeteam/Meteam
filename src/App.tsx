@@ -19,10 +19,20 @@ import {
   ShieldAlert,
   Moon,
   Sun,
-  UserCheck
+  UserCheck,
+  Shield,
+  Users,
+  CheckCircle,
+  Lock
 } from 'lucide-react';
 
 const STORAGE_KEY = 'quanly_congviec_tasks';
+
+const STAFF_LIST = [
+  "NV1: Dũng",
+  "NV2: Minh Đạt",
+  "NV3: Đạt Phan"
+];
 
 export default function App() {
   // Global States
@@ -39,6 +49,11 @@ export default function App() {
   // Multi-user simulation state
   const [isSimulatingUser, setIsSimulatingUser] = useState(false);
   const [tempEmailInput, setTempEmailInput] = useState(INITIAL_USER_EMAIL);
+
+  // Role switching states
+  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff'>('admin');
+  const [currentStaffName, setCurrentStaffName] = useState<string>('NV1: Dũng');
+  const [staffFilterOnly, setStaffFilterOnly] = useState<boolean>(true);
 
   // Load initial tasks from storage or seed mock data
   useEffect(() => {
@@ -168,6 +183,11 @@ export default function App() {
     }
   };
 
+  // Filter tasks if in staff role with staff filter active
+  const visibleTasks = (currentUserRole === 'staff' && staffFilterOnly) 
+    ? tasks.filter(t => t.assignee === currentStaffName)
+    : tasks;
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       
@@ -219,16 +239,23 @@ export default function App() {
               </button>
 
               {/* Create job shortcut */}
-              <button
-                onClick={() => {
-                  setTaskToEdit(undefined);
-                  setIsFormOpen(true);
-                }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-2 text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-md shadow-indigo-150 transition cursor-pointer select-none"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Giao Việc</span>
-              </button>
+              {currentUserRole === 'admin' ? (
+                <button
+                  onClick={() => {
+                    setTaskToEdit(undefined);
+                    setIsFormOpen(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-1.5 text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-md shadow-indigo-150 transition cursor-pointer select-none"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Giao Việc</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-bold border border-slate-200">
+                  <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Kỹ thuật viên</span>
+                </span>
+              )}
 
             </div>
 
@@ -266,50 +293,134 @@ export default function App() {
         )}
       </header>
 
+      {/* Role and permission control deck */}
+      <div className="bg-slate-900 text-white border-b border-slate-800 py-3 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          
+          <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-bold text-slate-300">PHÂN QUYỀN VAI TRÒ:</span>
+            </div>
+            
+            {/* Toggle buttons */}
+            <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+              <button
+                onClick={() => {
+                  setCurrentUserRole('admin');
+                  setStaffFilterOnly(false);
+                }}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  currentUserRole === 'admin' 
+                    ? 'bg-indigo-600 text-white shadow-sm font-extrabold' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 text-indigo-300" />
+                <span>ADMIN (Tuy Trần)</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setCurrentUserRole('staff');
+                  setStaffFilterOnly(true);
+                }}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer ${
+                  currentUserRole === 'staff' 
+                    ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-amber-950" />
+                <span>NHÂN VIÊN (Nhận việc)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* If Employee is selected: select specific employee */}
+          <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
+            {currentUserRole === 'staff' ? (
+              <div className="flex items-center space-x-2 bg-slate-800/85 border border-slate-750 px-3 py-1.5 rounded-xl w-full sm:w-auto">
+                <span className="text-slate-400 font-medium">Chọn nhân viên:</span>
+                <select
+                  value={currentStaffName}
+                  onChange={(e) => setCurrentStaffName(e.target.value)}
+                  className="bg-transparent text-amber-300 outline-none border-none focus:ring-0 cursor-pointer text-xs p-0 font-bold"
+                >
+                  {STAFF_LIST.map((staff) => (
+                    <option key={staff} value={staff} className="bg-slate-900 text-white font-bold">
+                      {staff}
+                    </option>
+                  ))}
+                </select>
+                
+                <label className="flex items-center space-x-1.5 pl-2.5 border-l border-slate-700 cursor-pointer select-none text-slate-300 focus-within:text-white">
+                  <input
+                    type="checkbox"
+                    checked={staffFilterOnly}
+                    onChange={(e) => setStaffFilterOnly(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <span>Chỉ hiện việc của tôi</span>
+                </label>
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-300 font-medium bg-slate-800/50 py-1.5 px-3 rounded-xl border border-slate-700/50 flex items-center space-x-1.5 w-full sm:w-auto justify-center">
+                <span>Chế độ <b>Tuy Trần (Admin)</b>: Toàn quyền Tạo mới, Sửa, Xóa, Phê duyệt công việc hoàn thành.</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
       {/* Workspace Menu navigation Tabs */}
       <nav className="bg-white border-b border-slate-150 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3">
             
             {/* Nav Tabs */}
-            <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto scrollbar-none">
-              
-              <button
-                onClick={() => { setSelectedTab('dashboard'); }}
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedTab === 'dashboard' 
-                    ? 'bg-white text-slate-900 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
-                <span>Tổng quan</span>
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0 hidden sm:inline-block">Mục Home ›</span>
+              <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-fit overflow-x-auto scrollbar-none">
+                
+                <button
+                  onClick={() => { setSelectedTab('dashboard'); }}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    selectedTab === 'dashboard' 
+                      ? 'bg-white text-slate-900 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+                  <span>Tổng quan</span>
+                </button>
 
-              <button
-                onClick={() => { setSelectedTab('board'); }}
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedTab === 'board' 
-                    ? 'bg-white text-slate-900 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <KanbanSquare className="w-3.5 h-3.5 shrink-0" />
-                <span>Kanban</span>
-              </button>
+                <button
+                  onClick={() => { setSelectedTab('board'); }}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    selectedTab === 'board' 
+                      ? 'bg-white text-slate-900 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <KanbanSquare className="w-3.5 h-3.5 shrink-0" />
+                  <span>Kanban</span>
+                </button>
 
-              <button
-                onClick={() => { setSelectedTab('list'); }}
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                  selectedTab === 'list' 
-                    ? 'bg-white text-slate-900 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <ListTodo className="w-3.5 h-3.5 shrink-0" />
-                <span>Việc Chi Tiết</span>
-              </button>
+                <button
+                  onClick={() => { setSelectedTab('list'); }}
+                  className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 sm:space-x-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    selectedTab === 'list' 
+                      ? 'bg-white text-slate-900 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <ListTodo className="w-3.5 h-3.5 shrink-0" />
+                  <span>Việc Chi Tiết</span>
+                </button>
 
+              </div>
             </div>
 
             {/* Utility Deck (Import Export backup, Seed database) */}
@@ -358,7 +469,7 @@ export default function App() {
         <div className="animate-fade-in">
           {selectedTab === 'dashboard' && (
             <Dashboard 
-              tasks={tasks} 
+              tasks={visibleTasks} 
               onSelectTask={setSelectedTask} 
               onFilterCategory={handleDashboardCategoryFilter} 
             />
@@ -366,7 +477,9 @@ export default function App() {
 
           {selectedTab === 'board' && (
             <TaskBoard 
-              tasks={tasks} 
+              tasks={visibleTasks} 
+              currentUserRole={currentUserRole}
+              currentStaffName={currentStaffName}
               onSelectTask={setSelectedTask} 
               onAddTask={() => {
                 setTaskToEdit(undefined);
@@ -378,7 +491,9 @@ export default function App() {
 
           {selectedTab === 'list' && (
             <TaskList 
-              tasks={tasks} 
+              tasks={visibleTasks} 
+              currentUserRole={currentUserRole}
+              currentStaffName={currentStaffName}
               onSelectTask={setSelectedTask} 
               onEditTask={(task) => {
                 setTaskToEdit(task);
@@ -428,6 +543,8 @@ export default function App() {
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
+          currentUserRole={currentUserRole}
+          currentStaffName={currentStaffName}
           onClose={() => setSelectedTask(null)}
           onEdit={(task) => {
             setSelectedTask(null);

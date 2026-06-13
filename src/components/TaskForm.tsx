@@ -157,6 +157,10 @@ export default function TaskForm({
       setErrMessage('Vui lòng nhập nội dung chi tiết công việc.');
       return;
     }
+    if (!assignee.trim()) {
+      setErrMessage('Vui lòng chọn nhân viên thực hiện (Tick chọn kỹ thuật viên).');
+      return;
+    }
     if (!creator.trim()) {
       setErrMessage('Vui lòng nhập Email người giao việc.');
       return;
@@ -258,35 +262,60 @@ export default function TaskForm({
           </div>
 
           {/* Grid fields for Assignee and due dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             
             {/* Person Assigned - Người được giao */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
-                Người được giao
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 tracking-wider uppercase flex justify-between items-center">
+                <span>Nhân viên thực hiện <span className="text-rose-500">* Bắt buộc</span></span>
+                <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">Tích chọn để giao việc</span>
               </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <User className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  className="w-full pl-9 pr-3 py-2.5 text-slate-800 text-sm border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl transition"
-                  placeholder="Nhập tên kỹ thuật viên"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { id: "NV1: Dũng", name: "NV1: Dũng" },
+                  { id: "NV2: Minh Đạt", name: "NV2: Minh Đạt" },
+                  { id: "NV3: Đạt Phan", name: "NV3: Đạt Phan" }
+                ].map((staff) => {
+                  const isChecked = assignee === staff.id;
+                  return (
+                    <button
+                      type="button"
+                      key={staff.id}
+                      onClick={() => setAssignee(staff.id)}
+                      className={`flex items-center justify-between p-3.5 border rounded-2xl transition-all text-left cursor-pointer select-none active:scale-[0.98] ${
+                        isChecked 
+                          ? 'border-indigo-600 bg-indigo-50/40 shadow-xs ring-1 ring-indigo-500' 
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-800">{staff.name}</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Kỹ thuật viên</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                        isChecked 
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs' 
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {isChecked && (
+                          <Check className="w-3.5 h-3.5 stroke-[3px]" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Completion Deadline - Hạn hoàn thành */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 font-sans">
               <label className="text-xs font-semibold text-slate-500 tracking-wider uppercase">
                 Hạn hoàn thành
               </label>
               <input
                 type="date"
-                className="w-full px-3 py-2.5 text-slate-800 text-sm border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl transition font-sans"
+                className="w-full px-3 py-2.5 text-slate-800 text-sm border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl transition"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 required
